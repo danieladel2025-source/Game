@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>أبطِل القنبلة – لعبة تعاونية</title>
+<style>
+:root{--bg:#f4f1ea;--card:#fff;--ink:#1d1d1f;--mute:#6b6b70;--line:#d8d3c8;--acc:#d9480f;--ok:#2b8a3e;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15161a;--card:#1f2127;--ink:#f1f1f3;--mute:#9a9aa3;--line:#33363f;--acc:#ff7a45;--ok:#51cf66}}
+:root[data-theme="dark"]{--bg:#15161a;--card:#1f2127;--ink:#f1f1f3;--mute:#9a9aa3;--line:#33363f;--acc:#ff7a45;--ok:#51cf66}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Segoe UI",Tahoma,sans-serif;line-height:1.6}
+main{max-width:640px;margin:0 auto;padding:16px}
+h1{font-size:26px;margin:8px 0}h2{font-size:17px;margin:0 0 6px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:12px 0}
+.mute{color:var(--mute);font-size:14px}
+button,input,select{font:inherit}
+.btn{display:block;width:100%;padding:14px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;margin:8px 0;text-align:center}
+.btn.p{background:var(--acc);color:#fff;border-color:var(--acc);font-weight:700}
+input,select{width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);text-align:center;font-size:18px;margin:6px 0}
+#code{letter-spacing:3px;font-size:20px}
+.hide{display:none !important}
+.hud{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.time{font-size:34px;font-weight:800;font-variant-numeric:tabular-nums;direction:ltr}
+.strikes span{font-size:24px;opacity:.25}.strikes span.on{opacity:1;color:var(--acc)}
+.done{outline:3px solid var(--ok)}.done::after{content:"✔ تم التفكيك";display:block;color:var(--ok);font-weight:700;margin-top:6px}
+.wires{display:flex;flex-direction:column;gap:12px;padding:6px 0}
+.wire{height:16px;border-radius:8px;border:2px solid rgba(0,0,0,.35);cursor:pointer}
+.wire.cut{background:repeating-linear-gradient(90deg,transparent 0 40%,var(--bg) 40% 60%) !important;opacity:.4}
+.syms{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.sym{font-size:30px;padding:10px 0;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.sym.lit{background:var(--ok);color:#fff}
+.row{display:flex;gap:10px;justify-content:center;margin:8px 0}.row>*{flex:1}
+.big{font-size:40px;text-align:center;letter-spacing:6px}
+.bigbtn{display:block;margin:6px auto;width:150px;height:150px;border-radius:50%;border:4px solid rgba(0,0,0,.35);font-size:24px;font-weight:800;cursor:pointer;user-select:none;touch-action:none}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-align:center;padding:20px;z-index:20}
+.ov h1{font-size:38px}
+.code{font-size:34px;letter-spacing:6px;color:var(--acc);direction:ltr;display:inline-block}
+table{width:100%;border-collapse:collapse;text-align:center}td,th{border:1px solid var(--line);padding:6px}
+.col td{font-size:24px}
+.dot{display:inline-block;width:14px;height:14px;border-radius:50%;border:1px solid #0006;vertical-align:middle}
+li{margin:4px 0}
+</style>
+</head>
+<body>
+<main>
+<section id="start">
+  <h1>💣 أبطِل القنبلة</h1>
+  <p class="mute">لعبة تعاونية بأجهزة منفصلة. كل لاعب يملك جزءاً من المعلومات، ولا حل إلا بالكلام معاً!</p>
+  <div class="card">
+    <h2>١) رمز الغرفة (نفسه عند الجميع)</h2>
+    <input id="code" maxlength="8" autocomplete="off">
+    <button class="btn" id="newcode">🎲 رمز عشوائي جديد</button>
+    <h2>٢) وضع اللعب (نفسه عند الجميع)</h2>
+    <select id="mode"><option value="2">لاعبان: مُفكِّك + صاحب دليل (٣٩ لغزاً)</option><option value="3">٣ لاعبين: تتابع الألغاز</option><option value="4">٤ لاعبين: تتابع الألغاز</option></select>
+    <h2>٣) اختر دورك</h2>
+    <div id="roles"></div>
+  </div>
+  <p class="mute">وضع التتابع: لكل لاعب لغز واحد، وقواعده مع اللاعب الذي قبله. عند حلّه يحصل على كود يعطيه للاعب التالي ليفتح لغزه. آخر لاعب يحلّ لغزه فتُبطَل القنبلة.</p>
+</section>
+
+<section id="hud" class="hide">
+  <div class="card hud">
+    <div><div class="mute">الرقم التسلسلي</div><b id="serial" dir="ltr"></b></div>
+    <div class="time" id="time">06:00</div>
+    <div class="strikes" id="strikes"><span>✖</span><span>✖</span><span>✖</span></div>
+  </div>
+</section>
+<section id="A" class="hide"><div id="cards"></div></section>
+<section id="B" class="hide"><div class="card"><h1>📖 دليل التفكيك</h1><div class="mute">اطلب من المُفكِّك وصف ما يراه ثم أخبره بما يفعل. القاعدة الأولى المنطبقة هي المعتمدة.</div></div><div id="mans"></div></section>
+<section id="T" class="hide"><div class="card"><b id="tinfo"></b></div><div id="station"></div><div id="tman"></div></section>
+</main>
+<div class="ov hide" id="ov"><h1 id="ovt"></h1><p id="ovp"></p><button class="btn p" style="max-width:260px" onclick="location.reload()">🔁 لعب مجدداً</button></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const COL={red:"#e5484d",blue:"#3e7bfa",yellow:"#f5c518",black:"#222",white:"#f2f2f2",green:"#30a46c",orange:"#f08c00"};
+const SYM=["☀","☾","★","♠","♣","♥","♦","☂","✿","☯","⚓","✂","☎","♫","⚡","☠","✈","⚑","☘","❄"];
+const SHP=["🔺","🔷","🟢","⭐","🟥","🌙"];
+const C4=["red","blue","yellow","green"],CN={red:"أحمر",blue:"أزرق",yellow:"أصفر",green:"أخضر"},ARR=["↑","→","↓","←"],SYM8=SYM.slice(0,8),SIDE=["▲","■","●"];
+const SIM=[{red:"blue",blue:"red",yellow:"green",green:"yellow"},{red:"yellow",blue:"green",yellow:"red",green:"blue"},{red:"green",blue:"yellow",yellow:"blue",green:"red"}];
+const FLG=[{n:"فرنسا",d:"row",c:["blue","white","red"]},{n:"ألمانيا",d:"column",c:["black","red","yellow"]},{n:"إيطاليا",d:"row",c:["green","white","red"]},{n:"روسيا",d:"column",c:["white","blue","red"]},{n:"هولندا",d:"column",c:["red","white","blue"]},{n:"أيرلندا",d:"row",c:["green","white","orange"]}];
+function maze(r){const o=Array.from({length:36},()=>[0,0,0,0]),v=new Set([0]),st=[0],D=[[-1,0],[0,1],[1,0],[0,-1]];
+ while(st.length){const c=st[st.length-1],y=c/6|0,x=c%6,nb=[];
+  D.forEach(([dy,dx],d)=>{const ny=y+dy,nx=x+dx;if(ny>=0&&ny<6&&nx>=0&&nx<6&&!v.has(ny*6+nx))nb.push([d,ny*6+nx])});
+  if(!nb.length){st.pop();continue}
+  const[d,n]=nb[Math.floor(r()*nb.length)];o[c][d]=1;o[n][(d+2)%4]=1;v.add(n);st.push(n)}
+ return{o}}
+const board=(m,A,p)=>`<div style="display:grid;grid-template-columns:repeat(6,40px);width:240px;margin:8px auto;direction:ltr">${m.o.map((o,i)=>{const w=d=>o[d]||A?"1px dashed var(--line)":"3px solid var(--ink)";
+ return`<div style="height:40px;font-size:10px;text-align:center;line-height:14px;border-top:${w(0)};border-right:${w(1)};border-bottom:${w(2)};border-left:${w(3)}">${"ABCDEF"[i%6]+(1+(i/6|0))}<br>${m.k.includes(i)?"<b style='color:#30a46c'>●</b>":A&&i==p?"🔵":A&&i==m.e?"🚩":""}</div>`}).join("")}</div>`;
+const HOLD={blue:4,yellow:1,white:5,red:3,green:2};
+function mk(code){let h=2166136261;for(const c of code){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}
+ let s=h>>>0;return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function gen(seed){
+ const r=mk(seed),ri=n=>Math.floor(r()*n),pick=a=>a[ri(a.length)];
+ const sh=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=ri(i+1);[a[i],a[j]]=[a[j],a[i]]}return a};
+ const L="ABCDEFGHJKLMNPRSTUVXYZ",g={};
+ g.serial=pick(L)+pick(L)+"-"+(1000+ri(9000));const odd=+g.serial.slice(-1)%2==1;
+ const n=3+ri(3);g.wires=Array.from({length:n},()=>pick(["red","blue","yellow","black","white"]));
+ const w=g.wires,cnt=c=>w.filter(x=>x==c).length,last=w[n-1];
+ g.wa=n==3?(!cnt("red")?1:last=="blue"?2:0):n==4?((cnt("red")>1&&odd)?w.lastIndexOf("red"):(last=="yellow"&&!cnt("red"))?0:1):((last=="black"&&odd)?3:(cnt("red")==1&&cnt("yellow")>1)?0:!cnt("black")?1:0);
+ let show,target;
+ for(;;){g.cols=Array.from({length:4},()=>sh(SYM).slice(0,6));target=ri(4);show=sh(g.cols[target]).slice(0,4);
+  if(g.cols.every((c,i)=>i==target||!show.every(x=>c.includes(x))))break}
+ g.show=sh(show);g.order=g.cols[target].filter(x=>show.includes(x));
+ g.bcol=pick(Object.keys(HOLD));g.word=pick(["ضغط","إيقاف","ابدأ"]);
+ g.tap=(g.bcol=="red"&&g.word=="إيقاف")||g.word=="ضغط";
+ g.shp=pick(["■","▲","●"]);g.nums=Array.from({length:3},()=>1+ri(9));
+ const N=g.nums;g.ma=g.shp=="■"?N[0]+N[1]+N[2]:g.shp=="▲"?Math.max(...N)-Math.min(...N):(N[0]*N[1]*N[2])%10;
+ g.lamps=Array.from({length:4},()=>pick(["red","blue","yellow","green"]));
+ g.sw=g.lamps.map((c,i)=>{let on=c=="red"||c=="yellow";return i%2?!on:on});
+ g.digs=sh([0,1,2,3,4,5,6,7,8,9]).slice(0,6);g.dshow=sh(SHP).slice(0,4);
+ g.dans=g.dshow.map(s=>g.digs[SHP.indexOf(s)]).join("");
+ g.sim=Array.from({length:4},()=>pick(C4));
+ g.mp=["·−·","−·−","··−","−−·","·−−","−··"];g.md=sh([0,1,2,3,4,5,6,7,8,9]).slice(0,6);g.mi=ri(6);
+ g.mz=[];while(g.mz.length<3){const m=maze(r);m.k=[ri(36),ri(36)];if(m.k[0]!=m.k[1])g.mz.push(m)}
+ g.mt=ri(3);const mz=g.mz[g.mt];mz.s=ri(36);do{mz.e=ri(36)}while(Math.abs(mz.e-mz.s)<14);
+ g.fd=sh([0,1,2,3,4,5,6,7,8,9]).slice(0,6);g.fi=ri(6);
+ g.dg=Array.from({length:5},()=>ri(10));g.da=String(odd?(g.dg[0]+g.dg[2]+g.dg[4])%10:(g.dg[1]+g.dg[3])%10);
+ g.side=ri(3);g.tg=Array.from({length:3},()=>Array.from({length:3},()=>ri(8)));
+ g.cs=sh(["●","■","▲","★"]);g.cmp=[0,1,2].map(()=>sh(ARR));g.cq=Array.from({length:4},()=>ri(4));
+ g.st=sh([...Array(39).keys()]);g.relay=Array.from({length:4},()=>100+ri(900));
+ g.x=gen2(seed,g.serial);g.y=gen3(seed,g.serial);return g}
+const G={g:null,end:0,over:false,strikes:0};
+const fin=(t,p)=>{G.over=true;$("ovt").textContent=t;$("ovp").textContent=p;$("ov").classList.remove("hide")};
+function strike(){if(G.over)return;G.strikes++;[...$("strikes").children].forEach((e,i)=>e.classList.toggle("on",i<G.strikes));
+ if(navigator.vibrate)try{navigator.vibrate(200)}catch(e){}
+ if(G.strikes>=3)fin("💥 انفجرت القنبلة!","وصلتم إلى ٣ أخطاء.")}
+function timer(sec){G.end=Date.now()+sec*1000;$("hud").classList.remove("hide");$("serial").textContent=G.g.serial;
+ const iv=setInterval(()=>{if(G.over){clearInterval(iv);return}
+  const l=Math.max(0,Math.ceil((G.end-Date.now())/1000));
+  $("time").textContent=String(Math.floor(l/60)).padStart(2,"0")+":"+String(l%60).padStart(2,"0");
+  if(l<=0)fin("⏰ انتهى الوقت!","انفجرت القنبلة.")},200)}
+function conf(b,ph,check,ok,bad){const i=document.createElement("input");i.placeholder=ph;i.inputMode="numeric";
+ const c=document.createElement("button");c.className="btn p";c.textContent="تأكيد";
+ c.onclick=()=>{if(G.over)return;if(check(i.value.trim())){c.disabled=i.disabled=true;ok()}else bad()};b.append(i,c)}
+const mk2=(cls,p)=>{const d=document.createElement("div");d.className=cls;p.appendChild(d);return d};
+const MOD=[
+{t:"الأسلاك",h:"اقطع السلك الصحيح بالضغط عليه.",
+ ui(g,b,ok,bad){const w=mk2("wires",b);let dn=0;
+  g.wires.forEach((c,i)=>{const d=mk2("wire",w);d.style.background=COL[c];
+   d.onclick=()=>{if(G.over||dn||d.classList.contains("cut"))return;d.classList.add("cut");if(i==g.wa){dn=1;ok()}else bad()}})},
+ man:()=>`<div class="mute">اسأل: كم سلكاً؟ ما ألوانها من الأعلى؟ وهل آخر رقم في الرقم التسلسلي فردي أم زوجي؟</div>
+ <b>٣ أسلاك:</b><ul><li>لا أحمر ← اقطع الثاني.</li><li>الأخير أزرق ← اقطع الأخير.</li><li>وإلا ← الأول.</li></ul>
+ <b>٤ أسلاك:</b><ul><li>أكثر من أحمر والرقم فردي ← آخر سلك أحمر.</li><li>الأخير أصفر ولا أحمر ← الأول.</li><li>وإلا ← الثاني.</li></ul>
+ <b>٥ أسلاك:</b><ul><li>الأخير أسود والرقم فردي ← الرابع.</li><li>أحمر واحد فقط وأكثر من أصفر ← الأول.</li><li>لا أسود ← الثاني.</li><li>وإلا ← الأول.</li></ul>`},
+{t:"الرموز",h:"اضغط الرموز بالترتيب الصحيح.",
+ ui(g,b,ok,bad){const w=mk2("syms",b);let p=0;
+  g.show.forEach(s=>{const x=document.createElement("button");x.className="sym";x.textContent=s;
+   x.onclick=()=>{if(G.over||x.classList.contains("lit"))return;if(s==g.order[p]){x.classList.add("lit");if(++p==4)ok()}else bad()};w.appendChild(x)})},
+ man:g=>`<div class="mute">اسأل عن الرموز الأربعة، ابحث عن العمود الذي يحتويها كلها، وأخبره بترتيبها من الأعلى للأسفل.</div>
+ <table class="col"><tr>${g.cols.map((c,i)=>`<td><div class="mute">عمود ${i+1}</div>${c.map(s=>`<div>${s}</div>`).join("")}</td>`).join("")}</tr></table>`},
+{t:"الزر",h:"ضغطة خفيفة، أو أبقِ الضغط ثم اترك في الوقت المناسب.",
+ ui(g,b,ok,bad){const e=document.createElement("button");e.className="bigbtn";
+  e.style.background=COL[g.bcol];e.style.color=["white","yellow"].includes(g.bcol)?"#111":"#fff";e.textContent=g.word;b.appendChild(e);let t0=0,dn=0;
+  e.onpointerdown=ev=>{ev.preventDefault();if(G.over||dn)return;t0=Date.now();e.style.transform="scale(.94)"};
+  e.onpointercancel=()=>{t0=0;e.style.transform=""};
+  e.onpointerup=()=>{if(!t0)return;e.style.transform="";const d=Date.now()-t0;t0=0;if(G.over)return;
+   const s=Math.max(0,Math.ceil((G.end-Date.now())/1000))%60;
+   const hit=g.tap?d<400:(d>=400&&s%10==HOLD[g.bcol]);hit?(dn=1,ok()):bad()}},
+ man:()=>`<div class="mute">اسأل عن لون الزر والكلمة عليه. أول قاعدة منطبقة:</div>
+ <ol><li>أحمر والكلمة «إيقاف» ← ضغطة خفيفة.</li><li>الكلمة «ضغط» ← ضغطة خفيفة.</li><li>غير ذلك ← يُبقي الضغط ويترك عندما يكون <b>آخر رقم في ثواني المؤقّت</b>:</li></ol>
+ <table><tr><th>اللون</th><th>الرقم</th></tr>${Object.entries(HOLD).map(([c,d])=>`<tr><td><i class="dot" style="background:${COL[c]}"></i></td><td>${d}</td></tr>`).join("")}</table>
+ <div class="mute">مثال: 02:14 ← آخر رقم 4.</div>`},
+{t:"القفل الحسابي",h:"أدخل الناتج الصحيح.",
+ ui(g,b,ok,bad){b.insertAdjacentHTML("beforeend",`<div class="big">${g.shp} ${g.nums.join(" · ")}</div>`);conf(b,"الناتج",v=>v===String(g.ma),ok,bad)},
+ man:()=>`<div class="mute">اسأل عن الشكل والأرقام الثلاثة.</div><ul><li>■ ← اجمع الأرقام الثلاثة.</li><li>▲ ← الأكبر ناقص الأصغر.</li><li>● ← اضرب الأرقام وخذ آخر رقم من الناتج.</li></ul>`},
+{t:"المفاتيح والمصابيح",h:"اضبط كل مفتاح (⬆ تشغيل / ⬇ إيقاف) حسب لون مصباحه ثم أكّد.",
+ ui(g,b,ok,bad){const l=mk2("row",b),s=mk2("row",b),st=g.lamps.map(()=>false);
+  g.lamps.forEach(c=>l.insertAdjacentHTML("beforeend",`<i class="dot" style="background:${COL[c]};width:34px;height:34px;flex:0 0 34px;margin:auto"></i>`));
+  st.forEach((_,i)=>{const x=document.createElement("button");x.className="sym";x.textContent="⬇";x.onclick=()=>{st[i]=!st[i];x.textContent=st[i]?"⬆":"⬇"};s.appendChild(x)});
+  const c=document.createElement("button");c.className="btn p";c.textContent="تأكيد";
+  c.onclick=()=>{if(G.over)return;st.every((v,i)=>v==g.sw[i])?(c.disabled=true,ok()):bad()};b.appendChild(c)},
+ man:()=>`<div class="mute">اسأل عن ألوان المصابيح الأربعة بدءاً من اليمين.</div><ul><li>أحمر أو أصفر ← ⬆ تشغيل.</li><li>أزرق أو أخضر ← ⬇ إيقاف.</li><li><b>استثناء:</b> المصباحان الثاني والرابع يُعكس حكمهما.</li></ul>`},
+{t:"فك الشيفرة",h:"حوّل الأشكال إلى أرقام وأدخل الكود المكوَّن من ٤ أرقام.",
+ ui(g,b,ok,bad){b.insertAdjacentHTML("beforeend",`<div class="big">${g.dshow.join(" ")}</div>`);conf(b,"الكود (٤ أرقام)",v=>v===g.dans,ok,bad)},
+ man:g=>`<div class="mute">اسأل عن الأشكال الأربعة بالترتيب، ثم أعطه الأرقام المقابلة.</div><table><tr>${SHP.map(s=>`<th>${s}</th>`).join("")}</tr><tr>${g.digs.map(d=>`<td><b>${d}</b></td>`).join("")}</tr></table>`}
+
+,{t:"تتابع الأضواء",h:"شاهد التسلسل ثم اضغط الألوان التي يقولها لك صاحب الدليل (تتغير بعدد الأخطاء).",
+ ui(g,b,ok,bad){const l=mk2("bigbtn",b);l.style.cssText="background:#555;width:90px;height:90px";
+  const pl=document.createElement("button");pl.className="btn";pl.textContent="▶ شغّل التسلسل";b.appendChild(pl);
+  pl.onclick=()=>g.sim.forEach((c,i)=>{setTimeout(()=>l.style.background=COL[c],i*900+200);setTimeout(()=>l.style.background="#555",i*900+800)});
+  const row=mk2("row",b);let p=0;
+  C4.forEach(c=>{const x=document.createElement("button");x.className="sym";x.style.background=COL[c];x.style.height="50px";
+   x.onclick=()=>{if(G.over||p>=4)return;if(c==SIM[Math.min(G.strikes,2)][g.sim[p]]){if(++p==4)ok()}else{p=0;bad()}};row.appendChild(x)})},
+ man:()=>`<div class="mute">اسأله عن ألوان التسلسل بالترتيب وعدد الأخطاء الحالية، وقل له أي لون يضغط بدل كل لون:</div><table><tr><th>أخطاء</th>${C4.map(c=>`<th><i class="dot" style="background:${COL[c]}"></i></th>`).join("")}</tr>${SIM.map((m,i)=>`<tr><td>${i==2?"٢+":i}</td>${C4.map(c=>`<td><i class="dot" style="background:${COL[m[c]]}"></i></td>`).join("")}</tr>`).join("")}</table>`},
+{t:"شيفرة مورس",h:"المصباح يومض بومضات قصيرة (·) وطويلة (−). صف النمط لصاحب الدليل وأدخل الرقم.",
+ ui(g,b,ok,bad){const l=mk2("bigbtn",b);l.style.cssText="background:#555;width:90px;height:90px";
+  const pl=document.createElement("button");pl.className="btn";pl.textContent="▶ شغّل الومضات";b.appendChild(pl);
+  pl.onclick=()=>{let t=200;[...g.mp[g.mi]].forEach(c=>{const d=c=="·"?250:750;setTimeout(()=>l.style.background="#f5c518",t);setTimeout(()=>l.style.background="#555",t+d);t+=d+400})};
+  conf(b,"الرقم",v=>v===String(g.md[g.mi]),ok,bad)},
+ man:g=>`<div class="mute">· قصيرة، − طويلة. أعطه الرقم المقابل للنمط:</div><table>${g.mp.map((x,i)=>`<tr><td dir="ltr" style="font-size:22px">${x}</td><td><b>${g.md[i]}</b></td></tr>`).join("")}</table>`},
+{t:"المتاهة",h:"وجّه 🔵 إلى 🚩 دون أن ترى الجدران. الاصطدام بجدار = خطأ.",
+ ui(g,b,ok,bad){const m=g.mz[g.mt],d=mk2("",b);let p=m.s,dn=0;const draw=()=>d.innerHTML=board(m,1,p);draw();
+  const r=mk2("row",b);[["↑",0],["←",3],["→",1],["↓",2]].forEach(([a,k])=>{const x=document.createElement("button");x.className="sym";x.textContent=a;
+   x.onclick=()=>{if(G.over||dn)return;if(!m.o[p][k]){bad();return}p+=[-6,1,6,-1][k];draw();if(p==m.e){dn=1;ok()}};r.appendChild(x)})},
+ man:g=>`<div class="mute">اسأله عن موضع الدائرتين الخضراوين ● واختر المتاهة المطابقة، ثم اسأله عن مكان 🔵 و🚩 (مثل C3) ووجّهه. الخطوط السميكة جدران.</div>${g.mz.map((m,i)=>`<div class="mute">متاهة ${i+1}</div>${board(m,0)}`).join("")}`},
+{t:"الأعلام",h:"صف العلم (الألوان واتجاه الأشرطة) لصاحب الدليل وأدخل الرقم.",
+ ui(g,b,ok,bad){const f=FLG[g.fi],d=mk2("",b);d.style.cssText=`display:flex;direction:ltr;flex-direction:${f.d};width:180px;height:110px;margin:8px auto;border:2px solid var(--line)`;
+  f.c.forEach(c=>{const x=mk2("",d);x.style.cssText=`flex:1;background:${COL[c]}`});conf(b,"الرقم",v=>v===String(g.fd[g.fi]),ok,bad)},
+ man:g=>`<div class="mute">حدّد الدولة من وصفه، ثم أعطه رقمها:</div><table>${FLG.map((f,i)=>`<tr><td>${f.n}</td><td><b>${g.fd[i]}</b></td></tr>`).join("")}</table>`},
+{t:"أرقام السلسلة",h:"أدخل الناتج الذي يحسبه صاحب الدليل من هذه الأرقام والرقم التسلسلي.",
+ ui(g,b,ok,bad){b.insertAdjacentHTML("beforeend",`<div class="big">${g.dg.join(" ")}</div>`);conf(b,"الناتج",v=>v===g.da,ok,bad)},
+ man:()=>`<div class="mute">اسأل عن الأرقام الخمسة وآخر رقم في التسلسلي:</div><ul><li>فردي ← اجمع الأول والثالث والخامس، وخذ آخر رقم من الناتج.</li><li>زوجي ← اجمع الثاني والرابع، وخذ آخر رقم من الناتج.</li></ul>`},
+{t:"القفل الدوّار",h:"اضغط كل عجلة لتدوير رمزها حتى تطابق ما يقوله صاحب الدليل ثم أكّد.",
+ ui(g,b,ok,bad){b.insertAdjacentHTML("beforeend",`<div class="big">رمز الجانب: ${SIDE[g.side]}</div>`);const r=mk2("row",b),pos=[0,0,0];
+  pos.forEach((_,i)=>{const x=document.createElement("button");x.className="sym";x.textContent=SYM8[0];x.onclick=()=>{pos[i]=(pos[i]+1)%8;x.textContent=SYM8[pos[i]]};r.appendChild(x)});
+  const c=document.createElement("button");c.className="btn p";c.textContent="تأكيد";
+  c.onclick=()=>{if(G.over)return;pos.every((v,i)=>v==g.tg[g.side][i])?(c.disabled=true,ok()):bad()};b.appendChild(c)},
+ man:g=>`<div class="mute">اسأل عن رمز الجانب، وأخبره بالرموز الثلاثة (من اليمين لليسار):</div><table>${SIDE.map((s,i)=>`<tr><td>${s}</td><td style="font-size:24px">${g.tg[i].map(k=>SYM8[k]).join(" ")}</td></tr>`).join("")}</table>`},
+{t:"توصيل الكابلات",h:"اضغط كابلاً ثم المنفذ الذي يقوله صاحب الدليل.",
+ ui(g,b,ok,bad){const a=mk2("row",b),z=mk2("row",b);let sel=null,n=0;
+  C4.forEach(c=>{const x=document.createElement("button");x.className="sym";x.style.background=COL[c];x.style.height="46px";x.onclick=()=>{if(!x.disabled)sel=c;};x.dataset.c=c;a.appendChild(x)});
+  ["●","■","▲","★"].forEach(s=>{const y=document.createElement("button");y.className="sym";y.textContent=s;
+   y.onclick=()=>{if(!sel||y.disabled||G.over)return;if(g.cs[C4.indexOf(sel)]==s){y.classList.add("lit");y.disabled=true;a.querySelector(`[data-c=${sel}]`).disabled=true;sel=null;if(++n==4)ok()}else{sel=null;bad()}};z.appendChild(y)})},
+ man:g=>`<div class="mute">اسأله عن ألوان الكابلات، وقل له أي منفذ يوصل كل كابل به:</div><table>${C4.map((c,i)=>`<tr><td><i class="dot" style="background:${COL[c]}"></i> ${CN[c]}</td><td style="font-size:22px">${g.cs[i]}</td></tr>`).join("")}</table>`},
+{t:"البوصلة",h:"اضغط الاتجاهات التي يقولها صاحب الدليل (تتغير بعدد الأخطاء).",
+ ui(g,b,ok,bad){b.insertAdjacentHTML("beforeend",`<div class="big">${g.cq.map(i=>ARR[i]).join(" ")}</div>`);const r=mk2("row",b);let p=0;
+  ARR.forEach((a,k)=>{const x=document.createElement("button");x.className="sym";x.textContent=a;
+   x.onclick=()=>{if(G.over||p>=4)return;if(a==g.cmp[Math.min(G.strikes,2)][g.cq[p]]){if(++p==4)ok()}else{p=0;bad()}};r.appendChild(x)})},
+ man:g=>`<div class="mute">اسأله عن الأسهم بالترتيب وعدد الأخطاء الحالية، وقل له أي سهم يضغط:</div><table><tr><th>أخطاء</th>${ARR.map(a=>`<th>${a}</th>`).join("")}</tr>${g.cmp.map((m,i)=>`<tr><td>${i==2?"٢+":i}</td>${m.map(a=>`<td style="font-size:22px">${a}</td>`).join("")}</tr>`).join("")}</table>`}
+];
+const bt=(p,t,f,c="btn")=>{const x=document.createElement("button");x.className=c;x.textContent=t;x.onclick=f;p.appendChild(x);return x};
+const tb=a=>"<table>"+a.map(r=>"<tr>"+r.map(c=>`<td>${c}</td>`).join("")+"</tr>").join("")+"</table>";
+const EL=["💧 ماء","🔥 نار","💨 غاز","🧪 حمض"],SPC=[["أحمر","#e5484d"],["برتقالي","#f08c00"],["أصفر","#f5c518"],["أخضر","#30a46c"],["أزرق","#3e7bfa"],["بنفسجي","#7048e8"]],LN=i=>"ABCDE"[i%5]+(5-(i/5|0));
+function gen2(seed,ser){const r=mk(seed+"#x"),ri=n=>Math.floor(r()*n),sh=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=ri(i+1);[a[i],a[j]]=[a[j],a[i]]}return a},R8=[0,1,2,3,4,5,6,7],x={sd:+ser.slice(-1)};
+ x.ac=sh(R8).slice(0,3);x.al=sh([1,2,3,4,5,6,7,8,9]).slice(0,8);
+ let y=4,c=0;const P=new Set(["4,0"]);while(y>0||c<4){if(y>0&&(c==4||r()<.5))y--;else c++;P.add(y+","+c)}
+ x.lz=[];for(let i=0;i<5;i++)for(let j=0;j<5;j++)x.lz.push(P.has(i+","+j)?0:(r()<.45?1:0));
+ x.rc=C4.map(()=>Array.from({length:3},()=>ri(4)));x.rt=ri(4);
+ x.mg=sh(R8);x.mc=sh([0,1,2,3]).slice(0,3).map(v=>v*45);
+ x.hr=sh(R8);x.hs=sh(R8).slice(0,3);
+ for(;;){const p=sh([0,1,2,3]),cr=p.map((v,i)=>p.filter((u,j)=>(i<j&&v>u)||(i>j&&v<u)).length),mx=Math.max(...cr),mn=Math.min(...cr);
+  if(cr.filter(v=>v==mx).length==1&&cr.filter(v=>v==mn).length==1){x.wp=p;x.wt=cr.indexOf(x.sd%2?mx:mn);x.wc=sh(C4);break}}
+ x.sb=R8.map(()=>ri(6));x.ss=ri(8);
+ x.r1=sh(R8);x.r2=sh(R8);x.p1=ri(8);x.p2=ri(8);if(x.p1==x.sd%8)x.p1=(x.p1+1)%8;if(x.p2==(x.sd+3)%8)x.p2=(x.p2+1)%8;
+ return x}
+MOD.push(
+{t:"الرنين الصوتي",h:"حرّك المنزلق حتى يطابق عدد قمم الموجة المستوى الذي يقوله صاحب الدليل لرمز الشاشة، واسمع النغمة ثم أكّد. ٣ رموز متتالية.",
+ ui(g,b,ok,bad){const x=g.x;let k=0;const sy=mk2("big",b),w=mk2("",b),sl=document.createElement("input");sl.type="range";sl.min=1;sl.max=9;sl.value=5;
+  const dr=()=>{sy.textContent=SYM8[x.ac[k]];const n=+sl.value;let d="M0 30";for(let i=0;i<=240;i+=4)d+=`L${i} ${30-22*Math.sin(i/240*n*6.283)}`;w.innerHTML=`<svg viewBox="0 0 240 60" style="width:100%;height:60px"><path d="${d}" fill="none" stroke="var(--acc)" stroke-width="2"/></svg>`};
+  sl.oninput=dr;dr();b.appendChild(sl);
+  bt(b,"🔊 اسمع",()=>{try{const a=new(window.AudioContext||window.webkitAudioContext)(),o=a.createOscillator();o.frequency.value=200+sl.value*100;o.connect(a.destination);o.start();o.stop(a.currentTime+.6)}catch(e){}});
+  bt(b,"تأكيد",()=>{if(G.over)return;if(+sl.value==x.al[x.ac[k]]){if(++k==3)ok();else dr()}else bad()},"btn p")},
+ man:g=>`<div class="mute">اسأله عن الرمز الظاهر، وقل له المستوى (١–٩) الذي يضبط عليه المنزلق:</div>${tb(SYM8.map((s,i)=>[`<span style="font-size:22px">${s}</span>`,`<b>${g.x.al[i]}</b>`]))}`},
+{t:"شبكة الليزر",h:"تحرّك من A1 (أسفل اليسار) إلى 🚩. الخلية القاتلة = خطأ وتعود للبداية. أخبر صاحب الدليل بموضعك قبل كل خطوة.",
+ ui(g,b,ok,bad){const x=g.x,d=mk2("",b);let y=4,c=0;
+  const dr=()=>d.innerHTML=`<div style="display:grid;grid-template-columns:repeat(5,1fr);direction:ltr;width:220px;margin:8px auto;text-align:center;font-size:22px">${Array.from({length:25},(_,i)=>`<div>${(i/5|0)==y&&i%5==c?"🔵":i==4?"🚩":"•"}</div>`).join("")}</div><div class="mute" style="text-align:center">موضعك: ${LN(y*5+c)}</div>`;dr();
+  const r=mk2("row",b);r.style.direction="ltr";[["←",0,-1],["↑",-1,0],["↓",1,0],["→",0,1]].forEach(([a,dy,dx])=>bt(r,a,()=>{if(G.over)return;const ny=y+dy,nc=c+dx;if(ny<0||ny>4||nc<0||nc>4)return;
+   if(x.lz[ny*5+nc]){y=4;c=0;dr();bad();return}y=ny;c=nc;dr();if(y==0&&c==4)ok()},"sym"))},
+ man:g=>`<div class="mute">✔ آمنة، ✖ قاتلة. اسأله عن موضعه ثم وجّهه خطوة خطوة. البداية A1 (أسفل اليسار) والنهاية E5 (أعلى اليمين).</div><div style="display:grid;grid-template-columns:repeat(5,1fr);direction:ltr;gap:2px;text-align:center">${g.x.lz.map((v,i)=>`<div style="border:1px solid var(--line);padding:4px;font-size:13px">${LN(i)}<br>${v?"✖":"✔"}</div>`).join("")}</div>`},
+{t:"التخليق الكيميائي",h:"لون المفاعل يحدد وصفة الصب. صب العناصر بالترتيب الذي يقوله صاحب الدليل؛ الخطأ يعيد الوصفة.",
+ ui(g,b,ok,bad){const x=g.x;let p=0;const f=mk2("",b);f.style.cssText=`width:90px;height:90px;border-radius:50%;margin:8px auto;background:${COL[C4[x.rt]]};border:3px solid var(--ink)`;
+  const s=mk2("",b);s.style.cssText="text-align:center;font-size:20px";
+  const r=mk2("row",b);EL.forEach((e,i)=>bt(r,e.split(" ")[0],()=>{if(G.over)return;if(i==x.rc[x.rt][p]){s.textContent="●".repeat(++p);if(p==3)ok()}else{p=0;s.textContent="";bad()}},"sym"))},
+ man:g=>`<div class="mute">اسأله عن لون المفاعل، وقل له ترتيب الصب (١ ثم ٢ ثم ٣). ممنوع تغيير الترتيب!</div>${tb(C4.map((c,i)=>[`<i class="dot" style="background:${COL[c]}"></i>`,g.x.rc[i].map(k=>EL[k]).join(" ← ")]))}`},
+{t:"القطبية المغناطيسية",h:"الإبرة تتغير كل ٢٫٥ ثانية. اضغط «ثبّت» عندما تكون على الزاوية التي يحسبها صاحب الدليل.",
+ ui(g,b,ok,bad){const x=g.x;let k=0,cur=0;const n=mk2("big",b),t=mk2("",b);t.style.textAlign="center";
+  const up=()=>{cur=x.mg[k%8]*45;n.innerHTML=`<span style="display:inline-block;transform:rotate(${cur}deg);transition:transform .4s">⬆</span>`;t.textContent=cur+"°"};up();
+  const iv=setInterval(()=>{if(G.over)return clearInterval(iv);k++;up()},2500);
+  bt(b,"🧲 ثبّت",()=>{if(G.over)return;if(cur==(x.sd%8*45+x.mc[Math.min(G.strikes,2)])%360){clearInterval(iv);ok()}else bad()},"btn p")},
+ man:g=>`<div class="mute">الزاوية الهدف = (آخر رقم في الرقم التسلسلي، وإن كان ٨ أو ٩ فاطرح ٨) × ٤٥، ثم أضف التصحيح حسب عدد الأخطاء الحالية، وإن بلغ ٣٦٠ فأكثر فاطرح ٣٦٠. أخبره متى تصبح الإبرة على الزاوية.</div>${tb([["أخطاء","٠","١","٢+"],["التصحيح",...g.x.mc.map(v=>v+"°")]])}`},
+{t:"ذاكرة الهولوغرام",h:"تُعرض ٣ رموز لثانية ونصف ثم تختفي. صفها لصاحب الدليل، ثم اضغطها بالترتيب الذي يقوله.",
+ ui(g,b,ok,bad){const x=g.x,f=mk2("big",b);f.textContent="؟ ؟ ؟";bt(b,"👁 اعرض",()=>{f.textContent=x.hs.map(i=>SYM8[i]).join(" ");setTimeout(()=>f.textContent="؟ ؟ ؟",1500)});
+  const w=mk2("syms",b),ex=x.hr.filter(i=>x.hs.includes(i)),bs=[];let p=0;
+  SYM8.forEach((s,i)=>{const e=document.createElement("button");e.className="sym";e.textContent=s;e.onclick=()=>{if(G.over||e.classList.contains("lit"))return;if(i==ex[p]){e.classList.add("lit");if(++p==3)ok()}else{p=0;bs.forEach(q=>q.classList.remove("lit"));bad()}};bs.push(e);w.appendChild(e)})},
+ man:g=>`<div class="mute">اطلب منه وصف الرموز الثلاثة بسرعة، ثم قل له ترتيب ضغطها حسب هذه القائمة (الأول يُضغط أولاً):</div><div class="big">${g.x.hr.map(i=>SYM8[i]).join(" ")}</div>`},
+{t:"مصفوفة الأسلاك",h:"أسلاك متشابكة. صف لصاحب الدليل عدد تقاطعات كل سلك مع غيره (واللون)، ثم اقطع السلك الذي يحدده.",
+ ui(g,b,ok,bad){const x=g.x,Y=[20,60,100,140];b.insertAdjacentHTML("beforeend",`<svg viewBox="0 0 240 160" style="width:100%;max-width:300px;display:block;margin:auto;direction:ltr">${x.wp.map((v,i)=>`<line data-i="${i}" x1="0" y1="${Y[i]}" x2="240" y2="${Y[v]}" stroke="${COL[x.wc[i]]}" stroke-width="7" stroke-linecap="round" style="cursor:pointer"/>`).join("")}</svg>`);
+  b.querySelectorAll("line").forEach(l=>l.onclick=()=>{if(G.over||l.dataset.cut)return;l.dataset.cut=1;l.style.opacity=.2;+l.dataset.i==x.wt?ok():bad()})},
+ man:()=>`<div class="mute">اسأله: ما لون كل سلك وكم سلكاً يقاطعه؟ ثم اسأله عن آخر رقم في الرقم التسلسلي:</div><ul><li>فردي ← اقطع السلك <b>الأكثر</b> تقاطعاً.</li><li>زوجي ← اقطع السلك <b>الأقل</b> تقاطعاً.</li></ul>`},
+{t:"شريحة الذاكرة المتطايرة",h:"الأرقام تتغير كل ثانية. جمّد الشاشة، أخبر صاحب الدليل بالأرقام، وأدخل الناتج.",
+ ui(g,b,ok,bad){const x=g.x,d=mk2("big",b);let fr=0,cur="0000";const rn=()=>{cur=Array.from({length:4},()=>Math.floor(Math.random()*10)).join("");d.textContent=cur};rn();
+  const iv=setInterval(()=>{if(G.over)return clearInterval(iv);if(!fr)rn()},1100);
+  const f=bt(b,"❄ جمّد",()=>{fr=!fr;f.textContent=fr?"▶ حرّر":"❄ جمّد"});
+  conf(b,"الناتج",v=>fr&&v===String(([...cur].reduce((s,c)=>s+ +c,0)+G.strikes+x.sd)%10),()=>{clearInterval(iv);ok()},bad)},
+ man:()=>`<div class="mute">اطلب منه تجميد الشاشة أولاً، ثم اسأله عن الأرقام الأربعة وآخر رقم في التسلسلي وعدد الأخطاء الحالية:</div><ul><li>الناتج = مجموع الأرقام الأربعة + عدد الأخطاء + آخر رقم في التسلسلي، وخذ آخر رقم من المجموع.</li></ul>`},
+{t:"محلل الطيف",h:"أوقف المؤشر عندما يعبر اللون الذي يقوله صاحب الدليل لرمز الزاوية.",
+ ui(g,b,ok,bad){const x=g.x,bar=mk2("",b);bar.style.cssText=`position:relative;height:40px;border-radius:8px;margin:14px 0;direction:ltr;background:linear-gradient(90deg,${SPC.map((s,i)=>`${s[1]} ${i*100/6}% ${(i+1)*100/6}%`).join(",")})`;
+  const ind=mk2("",bar);ind.style.cssText="position:absolute;top:-6px;bottom:-6px;width:6px;background:#fff;border:2px solid #000;border-radius:3px";let pos=0;
+  const iv=setInterval(()=>{if(G.over)return clearInterval(iv);pos=(1+Math.sin(Date.now()/600))/2;ind.style.left=`calc(${pos*100}% - 3px)`},30);
+  b.insertAdjacentHTML("beforeend",`<div class="big">${SYM8[x.ss]}</div>`);
+  bt(b,"⏹ أوقف",()=>{if(G.over)return;if(Math.min(5,Math.floor(pos*6))==x.sb[x.ss]){clearInterval(iv);ok()}else bad()},"btn p")},
+ man:g=>`<div class="mute">اسأله عن الرمز في الزاوية، وقل له اللون الذي يوقف المؤشر عنده:</div>${tb(SYM8.map((s,i)=>[`<span style="font-size:22px">${s}</span>`,`<i class="dot" style="background:${SPC[g.x.sb[i]][1]}"></i> ${SPC[g.x.sb[i]][0]}`]))}`},
+{t:"قفل الزنادين",h:"أبقِ الزر A مضغوطاً بإصبع، واضغط B في اللحظة التي يحددها صاحب الدليل.",
+ ui(g,b,ok,bad){const x=g.x,r=mk2("row",b);let h=0;const a=bt(r,"A (اضغط باستمرار)",()=>{});a.style.touchAction="none";
+  a.onpointerdown=e=>{e.preventDefault();h=1;a.style.background="var(--ok)"};a.onpointerup=a.onpointercancel=a.onpointerleave=()=>{h=0;a.style.background=""};
+  bt(r,"B",()=>{if(G.over)return;const s=Math.ceil((G.end-Date.now())/1000)%10;(h&&s%2==(x.sd%2?0:1))?ok():bad()},"btn p")},
+ man:()=>`<div class="mute">اسأله عن آخر رقم في الرقم التسلسلي:</div><ul><li>فردي ← يضغط B (وA مضغوط) عندما يكون آخر رقم في ثواني المؤقّت <b>زوجياً</b>.</li><li>زوجي ← عندما يكون <b>فردياً</b>.</li></ul><div class="mute">قل له «الآن!» في الوقت المناسب. التأخر أو التبكير = خطأ.</div>`},
+{t:"بوصلة الحلقتين",h:"أدر كل حلقة حتى يظهر في أعلاها الرمز الذي يقوله صاحب الدليل ثم أكّد.",
+ ui(g,b,ok,bad){const x=g.x,P=[x.p1,x.p2],R=[x.r1,x.r2],T=[x.r1[x.sd%8],x.r2[(x.sd+3)%8]],s=[];
+  const u=()=>s.forEach((e,k)=>e.textContent=SYM8[R[k][P[k]]]);
+  R.forEach((r,k)=>{const w=mk2("row",b);w.style.direction="ltr";bt(w,"◀",()=>{P[k]=(P[k]+7)%8;u()},"sym");s[k]=mk2("big",w);bt(w,"▶",()=>{P[k]=(P[k]+1)%8;u()},"sym")});u();
+  bt(b,"تأكيد",()=>{if(G.over)return;P.every((p,k)=>R[k][p]==T[k])?ok():bad()},"btn p")},
+ man:g=>{const x=g.x,S=a=>a.map(i=>SYM8[i]).join(" ");return`<div class="mute">اسأله عن الرمزين العلويين، واحسب عدد النقرات واتجاهها لكل حلقة. ▶ ينقل الرمز التالي في الدائرة (يميناً في القائمة) إلى الأعلى، و◀ السابق. الدائرة تلتف.</div><div>حلقة ١: <span style="font-size:22px;letter-spacing:4px">${S(x.r1)}</span></div><div>حلقة ٢: <span style="font-size:22px;letter-spacing:4px">${S(x.r2)}</span></div><b>الهدف: حلقة ١ = ${SYM8[x.r1[x.sd%8]]} ، حلقة ٢ = ${SYM8[x.r2[(x.sd+3)%8]]}</b>`}}
+);
+const XE=["🔋","🔌","💡","📟"],EG=["🐍","🦅","🐫","🐊","☀️","🌙","🌊","🏺"],RD=["يزحف بلا أرجل","ملك السماء بجناحين","سفينة الصحراء","يعيش في النيل وله أسنان","إله النهار","ينير الليل","حركة الماء المتلاطمة","وعاء من الفخار القديم"],DO=["دو","ري","مي","فا","صول","لا","سي"],CL=i=>"ABCDEF"[i%6]+(1+(i/6|0));
+const tone=f=>{try{const a=new(window.AudioContext||window.webkitAudioContext)(),o=a.createOscillator();o.frequency.value=f;o.connect(a.destination);o.start();o.stop(a.currentTime+.4)}catch(e){}};
+const gl=(t,k)=>`<span style="display:inline-block;transform:rotate(${k*90}deg);font-size:26px">${["┃","┗","┣"][t]}</span>`;
+const gridUI=(Q,b,ok,bad)=>{const c=Q.tc.slice(),d=mk2("",b);d.style.cssText=`display:grid;grid-template-columns:repeat(${Q.n},1fr);direction:ltr;gap:4px;max-width:260px;margin:8px auto`;
+ Q.ty.forEach((t,i)=>{const x=document.createElement("button");x.className="sym";x.innerHTML=gl(t,c[i]);x.onclick=()=>{c[i]=(c[i]+1)%4;x.innerHTML=gl(t,c[i])};d.appendChild(x)});
+ bt(b,"تأكيد",()=>{if(G.over)return;Q.ty.every((t,i)=>{const m=t?4:2;return((c[i]-Q.tr[i])%m+m)%m==0})?ok():bad()},"btn p")};
+const gridMan=Q=>`<div class="mute">اسأله عن شكل كل خلية واتجاهها (مثل B2) وقارنه بالمخطط، وقل له كم نقرة (كل نقرة تدير ٩٠° مع عقارب الساعة) لتصل للاتجاه المطلوب. المخطط:</div><div style="display:grid;grid-template-columns:repeat(${Q.n},1fr);direction:ltr;gap:4px;text-align:center;max-width:260px;margin:auto">${Q.ty.map((t,i)=>`<div style="border:1px solid var(--line)"><small>${"ABCD"[i%Q.n]+(1+(i/Q.n|0))}</small><br>${gl(t,Q.tr[i])}</div>`).join("")}</div>`;
+const pg=p=>`<div style="display:grid;grid-template-columns:repeat(3,1fr);direction:ltr;width:120px;margin:6px auto;text-align:center;font-size:20px">${Array.from({length:9},(_,i)=>`<div>${p.includes(i)?"⭐":"·"}</div>`).join("")}</div>`;
+function gen3(seed,ser){const r=mk(seed+"#y"),ri=n=>Math.floor(r()*n),sh=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=ri(i+1);[a[i],a[j]]=[a[j],a[i]]}return a},pk=a=>a[ri(a.length)],R8=[0,1,2,3,4,5,6,7],AL=[..."ABCDEFGHJKLMNPRSTUVXYZ"],y={sd:+ser.slice(-1)};
+ y.pm=1+ri(12);y.pst=Array.from({length:12},()=>ri(8));y.pbl=sh(AL).slice(0,6);y.pl=pk(AL);y.pc=100+ri(900);y.ps=r()<.5?y.pst[y.pm-1]:ri(8);y.pa=y.ps==y.pst[y.pm-1]&&!y.pbl.includes(y.pl);
+ const grid=(n,T)=>{const ty=Array.from({length:n*n},()=>ri(T)),tr=ty.map(()=>ri(4));return{n,ty,tr,tc:ty.map((t,i)=>(tr[i]+1+ri(3))%4)}};y.g1=grid(3,2);y.g2=grid(4,3);
+ for(;;){y.he=Array.from({length:3},()=>Array.from({length:3},()=>ri(5)-2));y.hs=Array.from({length:4},()=>ri(3));const v=[4,4,4];let k=1;y.hs.forEach(q=>{y.he[q].forEach((d,i)=>v[i]+=d);if(v.some(z=>z<0||z>8))k=0});if(k&&v.some(z=>z!=4)){y.ht=v;break}}
+ y.ed=sh([0,1,2,3,4,5,6,7,8,9]).slice(0,8);y.eg=sh(R8).slice(0,4);
+ y.fd=Array.from({length:3},()=>ri(10));y.fk=sh([0,1,2,3,4,5,6,7,8,9]);y.ft=y.sd%2?0:(y.sd>4?1:2);
+ y.cc=Array.from({length:4},()=>({n:1+ri(4),c:ri(4),f:r()<.5}));
+ for(;;){y.pc2=Array.from({length:4},()=>4+ri(5));const T=sh([0,1,2,3]).slice(0,2+ri(2)),l=y.pc2.map(c=>c-ri(2));T.forEach(j=>{l[j]+=2;l[(j+1)%4]-=2});if(l.every(v=>v>=0)&&l.some((v,i)=>v>y.pc2[i])){y.pl0=l;y.pT=T.sort();break}}
+ const m=maze(r);m.s=ri(36);do{m.e=ri(36)}while(Math.abs(m.e-m.s)<14);
+ const D=[-6,1,6,-1],par={[m.s]:-1},q=[m.s];while(q.length){const c=q.shift();for(let k=0;k<4;k++)if(m.o[c][k]){const n=c+D[k];if(!(n in par)){par[n]=c;q.push(n)}}}
+ const pa=new Set();for(let c=m.e;c!=-1;c=par[c])pa.add(c);m.k=sh([...Array(36).keys()].filter(i=>!pa.has(i))).slice(0,5);y.bm=m;
+ y.mk=sh([1,2,3,4,5,6,7]);y.ms=Array.from({length:4},()=>1+ri(7));
+ y.cq=Array.from({length:10},()=>sh([0,1,2,3]).slice(0,3));
+ y.xs=sh([...Array(16).keys()]).slice(0,6);y.xt=y.xs[0];y.xc=sh([y.xt,...[...Array(16).keys()].filter(i=>!y.xs.includes(i)).slice(0,3)]);y.xs=sh(y.xs);
+ y.sp=[];while(y.sp.length<5){const p=sh(R8.concat(8)).slice(0,3).sort();if(!y.sp.some(o=>o+""==p+""))y.sp.push(p)}y.stg=[ri(5),ri(5)];
+ y.dg=sh(R8).slice(0,4);y.dp=Array.from({length:6},()=>({s:ri(8),w:ri(4)}));
+ y.dn=sh([1,2,3,4,5]).slice(0,4);for(;;){y.sw=Array.from({length:3},()=>({s:1+ri(3),m:ri(4)}));y.sm=y.sw.map(w=>w.s*y.dn[w.m]);if(new Set(y.sm).size==3)break}
+ return y}
+MOD.push(
+{t:"فحص التصاريح",h:"اقرأ بيانات البطاقة بدقة لصاحب الدليل ثم قرّر: موافقة أم رفض.",
+ ui(g,b,ok,bad){const y=g.y;b.insertAdjacentHTML("beforeend",`<div class="big" style="font-size:24px;letter-spacing:2px">🪪 ${y.pl}-${y.pc}<br>شهر الإصدار: ${y.pm}<br>الختم: ${SYM8[y.ps]}</div>`);
+  const r=mk2("row",b);bt(r,"✔ موافقة",()=>{if(G.over)return;y.pa?ok():bad()},"btn p");bt(r,"✖ رفض",()=>{if(G.over)return;y.pa?bad():ok()})},
+ man:g=>`<div class="mute">اسأله عن الحرف الأول من الرقم وشهر الإصدار ورمز الختم. ارفض إذا كان الحرف في القائمة السوداء <b>أو</b> الختم لا يطابق شهره في الجدول، وإلا فوافق.</div><div>القائمة السوداء: <b>${g.y.pbl.join(" ")}</b></div>${tb([["شهر","الختم"],...g.y.pst.map((s,i)=>[i+1,SYM8[s]])])}`},
+{t:"توجيه الدارة",h:"صف لصاحب الدليل شكل كل خلية واتجاهها، ثم اضغط الخلايا (كل نقرة تدير ٩٠°) وأكّد.",ui:(g,b,ok,bad)=>gridUI(g.y.g1,b,ok,bad),man:g=>gridMan(g.y.g1)},
+{t:"موازنة الضغط الهيدروليكي",h:"ثلاثة مقاييس تبدأ عند ٤. الصمامات تؤثر على المقاييس معاً. الضغط خارج ٠–٨ يعيد الضبط.",
+ ui(g,b,ok,bad){const y=g.y;let v=[4,4,4];const d=mk2("big",b),dr=()=>d.textContent=v.join(" | ");dr();const r=mk2("row",b);
+  [0,1,2].forEach(k=>bt(r,"صمام "+"ABC"[k],()=>{if(G.over)return;y.he[k].forEach((e,i)=>v[i]+=e);if(v.some(z=>z<0||z>8)){v=[4,4,4];dr();bad();return}dr()},"sym"));
+  bt(b,"تأكيد",()=>{if(G.over)return;v.every((z,i)=>z==y.ht[i])?ok():bad()},"btn p")},
+ man:g=>`<div class="mute">البداية ٤|٤|٤. تسلسل الفتح الصحيح: <b>${g.y.hs.map(k=>"ABC"[k]).join(" ← ")}</b>. بعدها يؤكد المُفكِّك ويجب أن تقرأ المقاييس: <b>${g.y.ht.join(" | ")}</b>. أثر كل صمام:</div>${tb([["","م١","م٢","م٣"],...[0,1,2].map(k=>["صمام "+"ABC"[k],...g.y.he[k].map(e=>e>0?"+"+e:e)])])}`},
+{t:"الرموز الفرعونية",h:"صف الرموز الأربعة لصاحب الدليل وأدخل الكود الذي يستنتجه من الألغاز.",
+ ui(g,b,ok,bad){const y=g.y;b.insertAdjacentHTML("beforeend",`<div class="big">${y.eg.map(i=>EG[i]).join(" ")}</div>`);conf(b,"الكود (٤ أرقام)",v=>v===y.eg.map(i=>y.ed[i]).join(""),ok,bad)},
+ man:g=>`<div class="mute">اسأله عن الرموز الأربعة بالترتيب، واربط كل رمز بلغزه وأعطه رقمه:</div>${tb(RD.map((q,i)=>[q,`<b>${g.y.ed[i]}</b>`]))}`},
+{t:"المرشّح الطيفي",h:"بدّل المرشحات الثلاثة وأخبر صاحب الدليل بالرقم تحت كل لون، ثم أدخل الرقم الحقيقي.",
+ ui(g,b,ok,bad){const y=g.y,d=mk2("big",b);d.style.fontSize="60px";d.textContent="▒▒";const r=mk2("row",b);
+  ["red","green","blue"].forEach((c,f)=>{const x=bt(r,"",()=>{d.textContent=y.fd[f];d.style.color=COL[c]},"sym");x.style.background=COL[c];x.style.height="44px"});
+  conf(b,"الرقم الحقيقي",v=>v===String(y.fk[y.fd[y.ft]]),ok,bad)},
+ man:g=>`<div class="mute">اسأله عن الرقم تحت كل مرشح وآخر رقم في التسلسلي. المرشح الصحيح: فردي ← أحمر؛ زوجي أكبر من ٤ ← أخضر؛ غير ذلك ← أزرق. ثم حوّل رقمه بالجدول:</div>${tb([["المعروض",...[0,1,2,3,4,5,6,7,8,9]],["الحقيقي",...g.y.fk]])}`},
+{t:"كاميرات المراقبة",h:"راقب الكاميرات الأربع وأخبر صاحب الدليل بعدد الأشخاص ولون القميص وهل الإضاءة تومض، ثم أدخل الرمز.",
+ ui(g,b,ok,bad){const y=g.y,gr=mk2("",b);gr.style.cssText="display:grid;grid-template-columns:1fr 1fr;gap:6px";const cs=[];
+  y.cc.forEach((c,i)=>{const e=mk2("card",gr);e.style.margin="0";e.innerHTML=`<b>📹 ${i+1}</b><br>${"👤".repeat(c.n)}<br><i class="dot" style="background:${COL[C4[c.c]]};width:20px;height:20px"></i> قميص`;cs.push(e)});
+  const iv=setInterval(()=>{if(G.over)return clearInterval(iv);y.cc.forEach((c,i)=>{if(c.f)cs[i].style.opacity=cs[i].style.opacity==.3?1:.3})},400);
+  conf(b,"الرمز (٤ أرقام)",v=>v===y.cc.map(c=>c.f?c.n*2%10:(c.c<2?c.n+3:c.n)).join(""),()=>{clearInterval(iv);ok()},bad)},
+ man:()=>`<div class="mute">لكل كاميرا (من ١ إلى ٤) رقم واحد:</div><ul><li>الإضاءة توّمض ← (عدد الأشخاص × ٢) وخذ آخر رقم.</li><li>لا تومض والقميص أحمر أو أزرق ← عدد الأشخاص + ٣.</li><li>غير ذلك ← عدد الأشخاص.</li></ul>`},
+{t:"إدارة الشبكة الكهربائية",h:"وازن الأحمال بالقواطع الأربعة (كل قاطع يشغَّل/يُطفأ) حتى لا يتجاوز مولّد سعته، ثم أكّد.",
+ ui(g,b,ok,bad){const y=g.y,l=y.pl0.slice(),st=[0,0,0,0],d=mk2("",b),dr=()=>d.innerHTML=tb([["مولّد","A","B","C","D"],["الحِمل",...l]]);dr();const r=mk2("row",b);
+  [0,1,2,3].forEach(j=>bt(r,"قاطع "+"ABCD"[j],()=>{st[j]=!st[j];const s=st[j]?1:-1;l[j]-=2*s;l[(j+1)%4]+=2*s;dr()},"sym"));
+  bt(b,"تأكيد",()=>{if(G.over)return;l.every((v,i)=>v<=y.pc2[i]&&v>=0)?ok():bad()},"btn p")},
+ man:g=>`<div class="mute">اسأله عن أحمال المولدات. السعة القصوى:</div>${tb([["A","B","C","D"],g.y.pc2])}<div>القواطع المطلوب تشغيلها: <b>${g.y.pT.map(j=>"ABCD"[j]).join(" و")}</b></div>`},
+{t:"المتاهة العمياء",h:"لا ترى الخريطة. أبلغ صاحب الدليل بكل خطوة، وهو يحذّرك من الجدران والفخاخ. 📡 يكشف جدران موضعك لثانية.",
+ ui(g,b,ok,bad){const m=g.y.bm;let p=m.s,n=0,sc="";const d=mk2("big",b),dr=()=>d.innerHTML=`خطوات: ${n}<br><small>${sc}</small>`;dr();const r=mk2("row",b);r.style.direction="ltr";
+  [["↑",0],["←",3],["→",1],["↓",2]].forEach(([a,k])=>bt(r,a,()=>{if(G.over)return;if(!m.o[p][k]){bad();return}const q=p+[-6,1,6,-1][k];if(m.k.includes(q)){bad();return}p=q;n++;sc="";dr();if(p==m.e)ok()},"sym"));
+  bt(b,"📡 مسح قصير",()=>{sc="جدران: "+["↑","→","↓","←"].filter((_,k)=>!m.o[p][k]).join(" ");dr();setTimeout(()=>{sc="";dr()},1500)})},
+ man:g=>`<div class="mute">لا يرى المُفكِّك شيئاً. البداية <b>${CL(g.y.bm.s)}</b> والمخرج <b>${CL(g.y.bm.e)}</b>. الخطوط السميكة جدران و● فخاخ مميتة. وجّهه خطوة بخطوة:</div>${board(g.y.bm,0)}`},
+{t:"لوحة المفاتيح الموسيقية",h:"جرّب المفاتيح لتسمع نغماتها، ثم اضغط ▶ وابدأ العزف بحسب ما يمليه صاحب الدليل.",
+ ui(g,b,ok,bad){const y=g.y;let p=0,live=0;const w=mk2("syms",b);w.style.gridTemplateColumns="repeat(7,1fr)";const FQ=[262,294,330,349,392,440,494];
+  y.mk.forEach(rk=>bt(w,"🎹",()=>{tone(FQ[rk-1]);if(!live||G.over)return;if(rk==y.ms[p]){if(++p==4)ok()}else{p=0;bad()}},"sym"));
+  const s=bt(b,"▶ ابدأ العزف",()=>{live=!live;p=0;s.textContent=live?"⏸ تجربة":"▶ ابدأ العزف"})},
+ man:g=>`<div class="mute">المفاتيح بلا أسماء؛ المُفكِّك يميّزها بالسمع. أخبره بالنغمات بالترتيب (١ الأخفض ← ٧ الأعلى) ويمكنك دندنتها:</div><div class="big" style="font-size:24px;letter-spacing:2px">${g.y.ms.map(k=>DO[k-1]+"("+k+")").join(" ")}</div>`},
+{t:"صمام التبريد",h:"الحرارة ترتفع بعد ▶. افتح الصمامات الثلاثة بالترتيب الصحيح. الصمام الخاطئ يرفع الحرارة.",
+ ui(g,b,ok,bad){const y=g.y,q=y.cq[y.sd];let t=20,p=0,go=0;const d=mk2("big",b),dr=()=>{d.textContent="🌡 "+t+"°";d.style.color=t>80?"var(--acc)":""};dr();
+  const iv=setInterval(()=>{if(G.over)return clearInterval(iv);if(!go)return;t+=2;if(t>=100){t=60;bad()}dr()},1000);
+  bt(b,"▶ ابدأ",()=>{go=1});const r=mk2("row",b);
+  [0,1,2,3].forEach(k=>bt(r,"صمام "+"ABCD"[k],()=>{if(G.over||!go)return;if(k==q[p]){t=Math.max(20,t-15);if(++p==3){clearInterval(iv);ok()}}else{t=Math.min(95,t+20);p=0;bad()}dr()},"sym"))},
+ man:g=>`<div class="mute">اسأله عن آخر رقم في الرقم التسلسلي، وقل له ترتيب فتح الصمامات:</div>${tb([["الرقم","الترتيب"],...g.y.cq.map((q,i)=>[i,q.map(k=>"ABCD"[k]).join(" ← ")])])}`},
+{t:"ماسح الأشعة",h:"صف لصاحب الدليل الأجزاء داخل الحجرة (النوع واللون) ثم اقطع الجزء المحظور.",
+ ui(g,b,ok,bad){const y=g.y,w=mk2("syms",b);w.style.gridTemplateColumns="repeat(3,1fr)";
+  y.xs.forEach(i=>{const x=document.createElement("button");x.className="sym";x.innerHTML=`${XE[i>>2]}<br><i class="dot" style="background:${COL[C4[i&3]]}"></i>`;x.onclick=()=>{if(G.over||x.disabled)return;x.disabled=1;i==y.xt?ok():bad()};w.appendChild(x)})},
+ man:g=>`<div class="mute">قائمة المحظورات (جزء واحد فقط منها موجود في الحجرة). اسأله عن الأجزاء وألوانها:</div><ul>${g.y.xc.map(i=>`<li>${XE[i>>2]} <i class="dot" style="background:${COL[C4[i&3]]}"></i> ${CN[C4[i&3]]}</li>`).join("")}</ul>`},
+{t:"إصلاح أنابيب التبريد",h:"أنابيب مفصولة. صف لصاحب الدليل شكل كل خلية واتجاهها وأدرها حسب تعليماته ثم أكّد.",ui:(g,b,ok,bad)=>gridUI(g.y.g2,b,ok,bad),man:g=>gridMan(g.y.g2)},
+{t:"المحاذاة النجمية",h:"الخريطة تتغير كل ٢ ثانية. صف النجوم المضيئة لصاحب الدليل، واضغط القفل في اللحظة التي يقولها.",
+ ui(g,b,ok,bad){const y=g.y;let k=0;const d=mk2("",b);d.style.cssText="display:grid;grid-template-columns:repeat(3,1fr);direction:ltr;max-width:200px;margin:8px auto;font-size:28px;text-align:center";
+  const dr=()=>d.innerHTML=Array.from({length:9},(_,i)=>`<div>${y.sp[k%5].includes(i)?"⭐":"·"}</div>`).join("");dr();
+  const iv=setInterval(()=>{if(G.over)return clearInterval(iv);k++;dr()},2000);
+  bt(b,"🔒 قفل نجمي",()=>{if(G.over)return;k%5==y.stg[y.sd%2]?(clearInterval(iv),ok()):bad()},"btn p")},
+ man:g=>`<div class="mute">اسأله عن آخر رقم في التسلسلي: فردي ← النمط الأول، زوجي ← النمط الثاني. قل له «الآن!» حين تطابق شاشته النمط.</div>${pg(g.y.sp[g.y.stg[1]])}<div class="mute" style="text-align:center">النمط الثاني (زوجي) ↑ ، الأول (فردي) ↓</div>${pg(g.y.sp[g.y.stg[0]])}`},
+{t:"الشيفرة المزدوجة",h:"أوامر تظهر لمدة ٧ ثوانٍ، وبعضها مضلِّل. اسأل صاحب الدليل: نفّذ أم تجاهل؟",
+ ui(g,b,ok,bad){const y=g.y;let k=-1,tm,go=0;const d=mk2("big",b);d.style.fontSize="22px";
+  const nx=()=>{clearTimeout(tm);if(++k==6){d.textContent="✔";ok();return}const q=y.dp[k];d.innerHTML=`${SYM8[q.s]}<br>اقطع السلك ${CN[C4[q.w]]}`;tm=setTimeout(()=>{if(G.over)return;if(y.dg.includes(q.s))bad();nx()},7000)};
+  bt(b,"▶ ابدأ",()=>{if(!go){go=1;nx()}});const r=mk2("row",b);
+  bt(r,"✔ نفّذ",()=>{if(G.over||!go||k>5)return;y.dg.includes(y.dp[k].s)?nx():bad()},"btn p");bt(r,"✖ تجاهل",()=>{if(G.over||!go||k>5)return;y.dg.includes(y.dp[k].s)?bad():nx()})},
+ man:g=>`<div class="mute">اسأله عن الرمز الذي يتصدر كل أمر. الأمر حقيقي (نفّذ) فقط إذا كان رمزه من هذه القائمة، وإلا فهو مضلِّل (تجاهل):</div><div class="big">${g.y.dg.map(i=>SYM8[i]).join(" ")}</div>`},
+{t:"الميزان الثقيل",h:"صف لصاحب الدليل حجم ولون كل ثقل، ثم اضغطها بالترتيب الذي يقوله لتتوازن الكفتان.",
+ ui(g,b,ok,bad){const y=g.y,od=[0,1,2].sort((u,v)=>y.sm[u]-y.sm[v]);let p=0;const w=mk2("row",b);
+  y.sw.forEach((q,i)=>{const x=bt(w,"",()=>{if(G.over||x.disabled)return;if(i==od[p]){x.disabled=1;x.classList.add("lit");if(++p==3)ok()}else bad()},"sym");x.innerHTML=`<i class="dot" style="background:${COL[C4[q.m]]};width:${12+q.s*10}px;height:${12+q.s*10}px"></i><br><small>حجم ${q.s}</small>`})},
+ man:g=>`<div class="mute">الكتلة = الحجم × كثافة اللون. اسأله عن الثلاثة، واحسب الكتل، وقل له يضغط من <b>الأخف إلى الأثقل</b>:</div>${tb(C4.map((c,i)=>[`<i class="dot" style="background:${COL[c]}"></i> ${CN[c]}`,`كثافة ${g.y.dn[i]}`]))}`}
+);
+const man=(i,t)=>`<div class="card"><h2>${t}</h2>${MOD[i].man(G.g)}</div>`;
+function card(i,parent,done){const m=MOD[i],c=mk2("card",parent);c.innerHTML=`<h2>${m.t}</h2><div class="mute">${m.h}</div>`;
+ const b=mk2("",c);let d=0;m.ui(G.g,b,()=>{if(d)return;d=1;c.classList.add("done");done()},()=>{if(!d)strike()})}
+function renderRoles(){const m=+$("mode").value,r=$("roles");r.innerHTML="";
+ const add=(t,f)=>{const b=document.createElement("button");b.className="btn p";b.textContent=t;b.onclick=()=>{
+  const code=($("code").value.trim().toUpperCase()||"0000");G.g=gen(code+"|"+m);$("start").classList.add("hide");f()};r.appendChild(b)};
+ if(m==2){add("👁️ أنا المُفكِّك – أرى القنبلة",()=>{$("A").classList.remove("hide");timer(2400);let k=0;
+   MOD.forEach((_,i)=>card(i,$("cards"),()=>{if(++k==MOD.length)fin("🎉 تم إبطال القنبلة!","عمل رائع. تبقّى "+$("time").textContent)}))});
+  add("📖 أنا صاحب الدليل",()=>{$("B").classList.remove("hide");$("mans").innerHTML=MOD.map((x,i)=>man(i,`${i+1}) ${x.t}`)).join("")})}
+ else for(let p=0;p<m;p++)add(`لاعب ${p+1} من ${m}`,()=>team(p,m))}
+function team(p,N){const g=G.g,st=g.st.slice(0,N),prev=(p+N-1)%N,sta=$("station");
+ $("T").classList.remove("hide");timer(600);
+ $("tinfo").textContent=`أنت اللاعب ${p+1} من ${N}. قواعد لغزك مع اللاعب ${(p+1)%N+1}. ${p?"اطلب كود البدء من اللاعب "+p+".":"ابدأ فوراً!"}`;
+ const run=()=>card(st[p],sta,()=>{
+  if(p==N-1)fin("🎉 تم إبطال القنبلة!","أنهيتم سلسلة الألغاز. تبقّى "+$("time").textContent);
+  else sta.insertAdjacentHTML("beforeend",`<div class="card">كودك للاعب ${p+2}:<br><span class="code">${g.relay[p]}</span></div>`)});
+ if(p==0)run();else{const c=mk2("card",sta),b=mk2("",c);c.innerHTML=`<h2>🔒 لغزك مقفل</h2><div class="mute">أدخل الكود الذي يعطيه لك اللاعب ${p}.</div>`;c.appendChild(b);
+  conf(b,"الكود",v=>v===String(g.relay[p-1]),()=>{c.remove();run()},strike)}
+ $("tman").innerHTML=man(st[prev],`📖 دليل لغز اللاعب ${prev+1}: ${MOD[st[prev]].t}`)}
+$("mode").onchange=renderRoles;
+const rc=()=>$("code").value=Math.random().toString(36).slice(2,6).toUpperCase();
+$("newcode").onclick=rc;rc();renderRoles();
+</script>
+</body>
+</html>
